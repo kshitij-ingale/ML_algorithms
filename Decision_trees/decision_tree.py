@@ -3,6 +3,7 @@ import csv
 
 from utils import *
 
+
 class Node:
     def __init__(self, name):
         # Store feature name
@@ -10,21 +11,20 @@ class Node:
 
         # Distribution of labels after split to make decision
         self.split_dist = None
-        
-        # Store decision for leaf nodes
-        self.dec = None
+
 
 class Dtree:
     def __init__(self):
         # Store head node so that tree can be traversed
         self.head = None
 
-        # Store tree as nested dictionary in which next nodes are stored as values with parent node as key
+        # Store tree as nested dictionary in which next nodes are stored as
+        # values with parent node as key
         self.node_path = {}
 
 
 class DT:
-    def __init__(self, max_depth = None):
+    def __init__(self, max_depth=None):
         # Hyperparameter for max depth of tree
         self.max_depth = max_depth
 
@@ -42,77 +42,78 @@ class DT:
         # Generate tree by BFS strategy
         Q = [(train_x, train_y, headers, None, None, 0)]
 
-#####################################################################################################################################################################
         # Instantiate decision tree storage structure
         self.dtreeobj = Dtree()
-#####################################################################################################################################################################
-        
+
         while Q:
             features, labels, header, parent, parent_val, level = Q.pop(0)
-            # Find best split for the features and labels available at this point in tree
+            # Find best split for the features and labels available at this
+            # point in tree
             if self.max_depth:
                 if level > self.max_depth:
                     continue
-            arg_val, indices_split, dist_at_split = self.find_best_split(features, labels, header)
+            arg_val, indices_split, dist_at_split = self.find_best_split(
+                features, labels, header)
 
             if arg_val == -1:
                 continue
 
             # Find feature name corresponding to the best split
             name = header[arg_val]
-            
-#####################################################################################################################################################################
-            # Node corresponding to current split and add label distribution for this split
+
+            # Node corresponding to current split and add label distribution
+            # for this split
             curr = Node(name)
-            curr.split_dist = dist_at_split    
+            curr.split_dist = dist_at_split
             if not parent:
                 # Save head node
                 self.dtreeobj.head = curr
             else:
-                # Link current node to parent in the node path used for tree traversal
+                # Link current node to parent in the node path used for tree
+                # traversal
                 self.dtreeobj.node_path[parent][parent_val] = curr
-                
+
             # Add current node in the node path used for tree traversal
             self.dtreeobj.node_path[curr] = {}
-            
-#####################################################################################################################################################################
+
             # Split features, labels and header into number of splits for the current split (2 in this case)
-            
-
-
 
             for num_split in indices_split.keys():
 
                 # If just 1 entry in dictionary for this value of splitting feature, this is leaf node and so dont propagate tree creation beyond
-                if len(dist_at_split[num_split])>1:
+                if len(dist_at_split[num_split]) > 1:
                     # Create features, labels and headers for the splits
                     features_new = []
                     header_new = []
                     for i in range(len(features)):
-                        if i==arg_val:
+                        if i == arg_val:
                             # Skip current split node
                             continue
-                        features_new.append([features[i][j] for j in indices_split[num_split]])
+                        features_new.append([features[i][j]
+                                             for j in indices_split[num_split]])
                         header_new.append(header[i])
 
                     labels_new = [labels[i] for i in indices_split[num_split]]
                     # If no features are remaining, leaf node
                     if features_new:
-                        Q.append((features_new, labels_new, header_new, curr, num_split,level+1))
+                        Q.append((features_new, labels_new,
+                                  header_new, curr, num_split, level + 1))
                     else:
-                        
-                        if curr.dec:
-                            
-                            curr.dec[num_split] = find_key_to_maxval(curr.split_dist[num_split])
-                        else:
-                            
-                            curr.dec = {num_split:find_key_to_maxval(curr.split_dist[num_split])}
-                else:
-                    curr.dec = {num_split:num_split}
-                    
-        # self.print_tree(header, level_wise = True)
 
-    def print_tree(self, header, level_wise = False):
+                        if curr.dec:
+
+                            curr.dec[num_split] = find_key_to_maxval(
+                                curr.split_dist[num_split])
+                        else:
+
+                            curr.dec = {num_split: find_key_to_maxval(
+                                curr.split_dist[num_split])}
+                else:
+                    curr.dec = {num_split: num_split}
+
+        self.print_tree(header, level_wise=True)
+
+    def print_tree(self, header, level_wise=False):
         stack = [(self.dtreeobj.head, None, None, 0)]
 
         while stack:
@@ -122,40 +123,50 @@ class DT:
             else:
                 # For normal tree diagram, use DFS
                 node, val, parent, level = stack.pop()
-            # print(node.name+"\t"+str(level))
-            # print(("|")*level+node.name, node.split_dist)
 
-            ###################################################
             if parent:
-                print(("|")*level+node.name, node.split_dist," when ", parent.name," is ",val)
+                print(("|") * level + node.name, node.split_dist,
+                      " when ", parent.name, " is ", val)
             else:
-                print(("|")*level+node.name, node.split_dist,"  head_node",val)
-            ###################################################
+                print(("|") * level + node.name,
+                      node.split_dist, "  head_node", val)
+
             # if self.dtreeobj.node_path[node.name]:
             for parent_val, next_node in self.dtreeobj.node_path[node].items():
-                
-                stack.append((next_node, parent_val, node, level+1))
-            
+                stack.append((next_node, parent_val, node, level + 1))
 
-    def predict(self, test_x, header):
-        
+    def predict(self, dataset, header):
+        """
+        Function to perform predictions on the trained model
+        Input:
+        dataset: dataset for which predictions are to be obtained
+        header: feature names
+        Output:
+        predictions for the input features
+        """
         predictions = []
-        for i in range(len(test_x[0])):
+        for i in range(len(dataset[0])):
+            update = False
             node = self.dtreeobj.head
             while self.dtreeobj.node_path[node]:
-            
+
                 feat = header.index(node.name)
-                val = test_x[feat][i]
-                
+                val = dataset[feat][i]
+
                 if val in self.dtreeobj.node_path[node]:
                     node = self.dtreeobj.node_path[node][val]
+                    update = True
                 else:
                     break
+            if update:
+                feat = header.index(node.name)
+                val = dataset[feat][i]
+                predictions.append(find_key_to_maxval(node.split_dist[val]))
+            else:
+                predictions.append(find_key_to_maxval(node.split_dist[val]))
 
-            predictions.append(find_key_to_maxval(node.split_dist[val]))
-            
         return predictions
-        
+
     def find_best_split(self, features, labels, header):
         """
         Function to find best feature to be used to split by determining maximum information gain corresponding to split in that feature
@@ -170,23 +181,20 @@ class DT:
         header[arg_val]: Name of feature which provides maximum information gain
         """
         max_val, arg_val = -1, -1
-        IG_val = []
-
         for i in range(len(features)):
-            val, children_indices, dist_at_node = self.find_IG(features[i], labels)
+            val, children_indices, dist_at_node = self.find_IG(
+                features[i], labels)
 
-            IG_val.append(val)
-            
             if val > max_val:
                 max_val = val
                 arg_val = i
                 index_val = children_indices
                 dist_at_split = dist_at_node
-        
+        # If maximum information gain is 0, split should not be made
         if not (max_val > 0):
-            return -1,-1,-1
+            return -1, -1, -1
         return arg_val, index_val, dist_at_split
-    
+
     def find_IG(self, X, y):
         """
         Function to find Information Gain for a feature column
@@ -199,7 +207,7 @@ class DT:
 
         # Generate y values array when this feature = Y and N (used to find entropy of children nodes)
         children_y_val = {}
-        
+
         # Counter for No.of data points with this feature = Y and No.of data points with this feature = N (used to find weight for weighted avg children entropy)
         count_children = {}
 
@@ -213,8 +221,8 @@ class DT:
             else:
                 children_y_val[X[i]] = [y[i]]
                 children_index[X[i]] = [i]
-            
-            count_children[X[i]] = count_children.get(X[i],0) + 1
+
+            count_children[X[i]] = count_children.get(X[i], 0) + 1
 
         parent_entropy, _ = find_entropy(y)
         avg_children_entropy = 0
@@ -223,13 +231,14 @@ class DT:
         dist_after_split = {}
 
         for child in children_y_val.keys():
-            
+
             entropy, label_dist_for_child = find_entropy(children_y_val[child])
-            avg_children_entropy += (count_children[child]/len(X))*entropy
+            avg_children_entropy += (count_children[child] / len(X)) * entropy
 
             dist_after_split[child] = label_dist_for_child
 
         return parent_entropy - avg_children_entropy, children_index, dist_after_split
+
 
 def read_data(path, vocab=None, test_mode=False):
     """
@@ -243,13 +252,12 @@ def read_data(path, vocab=None, test_mode=False):
     lab: Encoded labels
     vocab: vocabulary of categorical training dataset
     """
-
     with open(path, mode='r') as csv_file:
         csv_reader = csv.reader(csv_file)
 
         # First row is header
         header = csv_reader.__next__()
-        
+
         # Store data points as list
         data = []
 
@@ -265,18 +273,17 @@ def read_data(path, vocab=None, test_mode=False):
                 vocab[i] = []
         for row in csv_reader:
             if test_mode:
-                for i,v in enumerate(row):
+                for i, v in enumerate(row):
                     row[i] = vocab[i].index(row[i])
             else:
-                for i,v in enumerate(row):
+                for i, v in enumerate(row):
                     if v not in vocab[i]:
                         vocab[i].append(v)
                     # Ordinal encocding for categorical data
                     row[i] = vocab[i].index(v)
             data.append(row)
-    
-    # Structure the dataset lists in required format
 
+    # Structure the dataset lists in required format
     feat = []
     for l in zip(*data):
         feat.append(list(l))
@@ -288,41 +295,34 @@ def read_data(path, vocab=None, test_mode=False):
     else:
         return feat, lab, vocab, header
 
-def accuracy(actual,predictions):
-    assert len(actual)==len(predictions), "Mismatch in number of actual data points and predicted data points"
-    correct = 0.0
-    for i in range(len(actual)):
-        if actual[i]== predictions[i]:
-            correct += 1
-
-    return correct/len(actual)
 
 def argument_parser():
+    """
+    Function to parse argparse arguments
+    """
     parser = argparse.ArgumentParser(description='Read input parameters')
-    parser.add_argument('--train', dest='train_dir', default = None,
-                    help='Training dataset directory location')
-    parser.add_argument('--test', dest='test_dir', default = None,
-                    help='Test dataset directory location')
-    parser.add_argument('--max_d', dest='max_d', default = None, type = int,
-                    help='Maximum depth for the tree')
+    parser.add_argument('--train', dest='train_dir', default=None,
+                        help='Training dataset directory location')
+    parser.add_argument('--test', dest='test_dir', default=None,
+                        help='Test dataset directory location')
+    parser.add_argument('--max_d', dest='max_d', default=None, type=int,
+                        help='Maximum depth for the tree')
     return parser.parse_args()
+
 
 if __name__ == '__main__':
     args = argument_parser()
     # Read and encode data from csv files
     train_x, train_y, vocab, header = read_data(args.train_dir)
-    test_x, test_y = read_data(args.test_dir, vocab, test_mode = True)
+    test_x, test_y = read_data(args.test_dir, vocab, test_mode=True)
 
     header = header[:-1]
     # Create decision tree instance
     DT_obj = DT(args.max_d)
     DT_obj.train(train_x, train_y, header)
 
-    train_predictions = DT_obj.predict(train_x, header)
-
+    train_predictions = DT_obj.predict(train_x, header, train_y)
     print(f"Training dataset accuracy is {accuracy(train_y,train_predictions)}")
 
-    predictions = DT_obj.predict(test_x, header)
-    
+    predictions = DT_obj.predict(test_x, header, test_y)
     print(f"Test dataset accuracy is {accuracy(test_y,predictions)}")
-    
