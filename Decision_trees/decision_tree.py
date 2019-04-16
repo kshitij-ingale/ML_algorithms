@@ -1,10 +1,15 @@
+"""
+This module implements the decision tree from scratch using information gain as split criterion
+"""
+
 import argparse
 import csv
-
-from utils import *
-
+from utils import find_key_to_maxval, find_entropy, accuracy
 
 class Node:
+    """
+    Node class to store info about each split point
+    """
     def __init__(self, name):
         # Store feature name
         self.name = name
@@ -14,6 +19,9 @@ class Node:
 
 
 class Dtree:
+    """
+    Class for decision tree storage structure to store head node and sequence of nodes
+    """
     def __init__(self):
         # Store head node so that tree can be traversed
         self.head = None
@@ -24,6 +32,9 @@ class Dtree:
 
 
 class DT:
+    """
+    Class for instantiating decision tree object
+    """
     def __init__(self, max_depth=None):
         # Hyperparameter for max depth of tree
         self.max_depth = max_depth
@@ -49,11 +60,10 @@ class DT:
             features, labels, header, parent, parent_val, level = Q.pop(0)
             # Find best split for the features and labels available at this
             # point in tree
-            if self.max_depth:
-                if level > self.max_depth:
-                    continue
+            if self.max_depth and level > self.max_depth:
+                continue
             arg_val, indices_split, dist_at_split = self.find_best_split(
-                features, labels, header)
+                features, labels)
 
             if arg_val == -1:
                 continue
@@ -78,16 +88,15 @@ class DT:
 
             # Split features, labels and header into number of splits for the current split (2 in this case)
 
-            for num_split in indices_split.keys():
-
-                # If just 1 entry in dictionary for this value of splitting feature, this is leaf node and so dont propagate tree creation beyond
+            for num_split in indices_split:
+                # If just 1 entry in dictionary for this value of splitting feature, this is leaf node
+                # and so dont propagate tree creation beyond
                 if len(dist_at_split[num_split]) > 1:
                     # Create features, labels and headers for the splits
                     features_new = []
                     header_new = []
                     for i in range(len(features)):
                         if i == arg_val:
-                            # Skip current split node
                             continue
                         features_new.append([features[i][j]
                                              for j in indices_split[num_split]])
@@ -98,22 +107,14 @@ class DT:
                     if features_new:
                         Q.append((features_new, labels_new,
                                   header_new, curr, num_split, level + 1))
-                    else:
+        self.print_tree(level_wise=True)
 
-                        if curr.dec:
-
-                            curr.dec[num_split] = find_key_to_maxval(
-                                curr.split_dist[num_split])
-                        else:
-
-                            curr.dec = {num_split: find_key_to_maxval(
-                                curr.split_dist[num_split])}
-                else:
-                    curr.dec = {num_split: num_split}
-
-        self.print_tree(header, level_wise=True)
-
-    def print_tree(self, header, level_wise=False):
+    def print_tree(self, level_wise=False):
+        """
+        Function to display the decision tree
+        Input:
+        level_wise: Print tree with level wise (BFS) or depth wise (DFS)
+        """
         stack = [(self.dtreeobj.head, None, None, 0)]
 
         while stack:
@@ -131,7 +132,6 @@ class DT:
                 print(("|") * level + node.name,
                       node.split_dist, "  head_node", val)
 
-            # if self.dtreeobj.node_path[node.name]:
             for parent_val, next_node in self.dtreeobj.node_path[node].items():
                 stack.append((next_node, parent_val, node, level + 1))
 
@@ -167,7 +167,7 @@ class DT:
 
         return predictions
 
-    def find_best_split(self, features, labels, header):
+    def find_best_split(self, features, labels):
         """
         Function to find best feature to be used to split by determining maximum information gain corresponding to split in that feature
         Input:
@@ -181,21 +181,22 @@ class DT:
         header[arg_val]: Name of feature which provides maximum information gain
         """
         max_val, arg_val = -1, -1
-        for i in range(len(features)):
+        for ind, feature in enumerate(features):
             val, children_indices, dist_at_node = self.find_IG(
-                features[i], labels)
+                feature, labels)
 
             if val > max_val:
                 max_val = val
-                arg_val = i
+                arg_val = ind
                 index_val = children_indices
                 dist_at_split = dist_at_node
         # If maximum information gain is 0, split should not be made
-        if not (max_val > 0):
+        if not max_val > 0:
             return -1, -1, -1
         return arg_val, index_val, dist_at_split
 
-    def find_IG(self, X, y):
+    @staticmethod
+    def find_IG(X, y):
         """
         Function to find Information Gain for a feature column
         Input:
@@ -214,15 +215,14 @@ class DT:
         # Store indices of the data points with this feature = Y and indices of data points with this feature = N (used for further splits at next level of tree)
         children_index = {}
 
-        for i in range(len(X)):
-            if X[i] in children_y_val:
-                children_y_val[X[i]].append(y[i])
-                children_index[X[i]].append(i)
+        for ind, val in enumerate(X):
+            if val in children_y_val:
+                children_y_val[val].append(y[ind])
+                children_index[val].append(ind)
             else:
-                children_y_val[X[i]] = [y[i]]
-                children_index[X[i]] = [i]
-
-            count_children[X[i]] = count_children.get(X[i], 0) + 1
+                children_y_val[val] = [y[ind]]
+                children_index[val] = [ind]
+            count_children[val] = count_children.get(val, 0) + 1
 
         parent_entropy, _ = find_entropy(y)
         avg_children_entropy = 0
@@ -230,7 +230,7 @@ class DT:
         # Distribution of label values for children nodes (number of values for y=1 and y=0 for each child so that majority vote can be done)
         dist_after_split = {}
 
-        for child in children_y_val.keys():
+        for child in children_y_val:
 
             entropy, label_dist_for_child = find_entropy(children_y_val[child])
             avg_children_entropy += (count_children[child] / len(X)) * entropy
@@ -292,8 +292,7 @@ def read_data(path, vocab=None, test_mode=False):
 
     if test_mode:
         return feat, lab
-    else:
-        return feat, lab, vocab, header
+    return feat, lab, vocab, header
 
 
 def argument_parser():
@@ -318,11 +317,11 @@ if __name__ == '__main__':
 
     header = header[:-1]
     # Create decision tree instance
-    DT_obj = DT(args.max_d)
-    DT_obj.train(train_x, train_y, header)
+    DTObj = DT(args.max_d)
+    DTObj.train(train_x, train_y, header)
 
-    train_predictions = DT_obj.predict(train_x, header, train_y)
+    train_predictions = DTObj.predict(train_x, header)
     print(f"Training dataset accuracy is {accuracy(train_y,train_predictions)}")
 
-    predictions = DT_obj.predict(test_x, header, test_y)
+    predictions = DTObj.predict(test_x, header)
     print(f"Test dataset accuracy is {accuracy(test_y,predictions)}")

@@ -1,5 +1,7 @@
+"""
+This module provides supplementary functions for the implementation of decision tree
+"""
 import math
-
 
 def find_key_to_maxval(d):
     """
@@ -47,9 +49,9 @@ def accuracy(actual, predictions):
     Output:
     Accuracy score corresponding to the actual values and predicted values
     """
-    assert len(actual) == len( predictions), "Mismatch in number of actual data points and predicted data points"
+    assert len(actual) == len(predictions), "Mismatch in number of actual data points and predicted data points"
     correct = 0.0
-    for i in range(len(actual)):
-        if actual[i] == predictions[i]:
+    for ind, actual_val in enumerate(actual):
+        if actual_val == predictions[ind]:
             correct += 1
     return correct / len(actual)

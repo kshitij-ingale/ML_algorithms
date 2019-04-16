@@ -1,3 +1,6 @@
+"""
+This module provides test functions for the implementation of decision tree
+"""
 import math
 import unittest
 import numpy as np
@@ -12,28 +15,40 @@ from utils import accuracy, find_key_to_maxval
 
 
 class TestStringMethods(unittest.TestCase):
+    """
+    Class to provide test cases for the implementation
+    """
 
     def test_check_find_max_dict(self):
+        """
+        Test function to check if key corresponding to max value is obtained
+        """
         trial_dict = {"asd": 32, "qwe": 10}
         self.assertEqual(find_key_to_maxval(trial_dict), "asd")
 
     def test_check_IG_with_theo(self):
+        """
+        Test function to validate information gain calculation with manual calculation
+        """
         obj = DT()
         X = [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
         y = [1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0]
 
         def f(x):
             return math.log(x)
-        H_parent = -((9 / 14) * f(9 / 14)) - ((5 / 14) * f(5 / 14))
-        H_left = -((3 / 6) * f(3 / 6)) - ((3 / 6) * f(3 / 6))
-        H_right = -((6 / 8) * f(6 / 8)) - ((2 / 8) * f(2 / 8))
+        h_parent = -((9 / 14) * f(9 / 14)) - ((5 / 14) * f(5 / 14))
+        h_left = -((3 / 6) * f(3 / 6)) - ((3 / 6) * f(3 / 6))
+        h_right = -((6 / 8) * f(6 / 8)) - ((2 / 8) * f(2 / 8))
         wt_left = 6 / 14
         wt_right = 8 / 14
-        theo = H_parent - (wt_left * H_left) - (wt_right * H_right)
+        theo = h_parent - (wt_left * h_left) - (wt_right * h_right)
 
         self.assertEqual(obj.find_IG(X, y)[0], theo)
 
     def test_check_IG_with_sklearn(self):
+        """
+        Test function to validate information gain calculation with sklearn calculation
+        """
         obj = DT()
         X = [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
         y = [1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0]
@@ -43,7 +58,9 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(round(obj.find_IG(X, y)[0], 6), round(sklearn_res, 6))
 
     def test_check_small_data_performance(self):
-
+        """
+        Test function to validate implementation performance on toy dataset using sklearn classifier
+        """
         # Read and encode data from csv files
         train_dir = "./data/small_train.csv"
         test_dir = "./data/small_test.csv"
@@ -79,6 +96,8 @@ def get_sklearn_accuracy(mode):
     Output:
     accuracy score for sklearn model
     """
+    if not mode:
+        raise ValueError("Specify mode")
     # Read dataset
     train = pd.read_csv("data/small_train.csv")
     test = pd.read_csv("data/small_test.csv")
@@ -100,12 +119,8 @@ def get_sklearn_accuracy(mode):
     if mode == "train":
         predictions = mod.predict(x_train)
         return accuracy_score(y_train, predictions)
-    elif mode == "test":
-        predictions = mod.predict(x_test)
-        return accuracy_score(y_test, predictions)
-    else:
-        raise ValueError("Specify mode")
-
+    predictions = mod.predict(x_test)
+    return accuracy_score(y_test, predictions)
 
 if __name__ == '__main__':
     unittest.main()
