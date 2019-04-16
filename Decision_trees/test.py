@@ -1,10 +1,17 @@
-from decision_tree import DT
+from decision_tree import DT, accuracy, read_data
 import unittest
 import math
 from sklearn.feature_selection import mutual_info_classif
 import numpy as np
+from utils import *
 
 class TestStringMethods(unittest.TestCase):
+
+
+    def test_check_find_max_dict(self):
+        trial_dict = {"asd":32, "qwe":10}
+        self.assertEqual(find_key_to_maxval(trial_dict),"asd")
+
 
     def test_check_IG_with_theo(self):
         obj = DT()
@@ -19,7 +26,7 @@ class TestStringMethods(unittest.TestCase):
         wt_right = 8/14
         theo = H_parent - (wt_left*H_left) - (wt_right*H_right)
 
-        self.assertEqual(obj.find_IG(X,y), theo)
+        self.assertEqual(obj.find_IG(X,y)[0], theo)
 
 
     def test_check_IG_with_sklearn(self):
@@ -27,8 +34,73 @@ class TestStringMethods(unittest.TestCase):
         X=[1,1,1,1,1,1,0,0,0,0,0,0,0,0]
         y=[1,1,1,0,0,0,1,1,1,1,1,1,0,0]
         
-        sklearn_res = mutual_info_classif(np.array(X).reshape(-1,1),np.array(y),discrete_features=True)[0]
-        self.assertEqual(round(obj.find_IG(X,y),6), round(sklearn_res, 6))
+        sklearn_res = mutual_info_classif(np.asarray(X).reshape(-1,1),np.asarray(y),discrete_features=True)[0]
+        self.assertEqual(round(obj.find_IG(X,y)[0],6), round(sklearn_res, 6))
+
+
+    def test_check_small_data_performance(self):
+
+        # Read and encode data from csv files
+        train_dir = "/home/kshitij/Desktop/ML_algorithms/ML_algorithms/Decision_trees/data/small_train.csv"
+        test_dir = "/home/kshitij/Desktop/ML_algorithms/ML_algorithms/Decision_trees/data/small_test.csv"
+        train_x, train_y, vocab, header = read_data(train_dir)
+        test_x, test_y = read_data(test_dir, vocab, test_mode = True)
+        
+        # Create decision tree instance
+        DT_obj = DT()
+
+        DT_obj.train(train_x, train_y, header)
+
+        train_predictions = DT_obj.predict(train_x, header)
+
+        accuracy(train_y,train_predictions)
+        # Obtain training accuracy using sklearn classifier
+        sklearn_accuracy = get_sklearn_accuracy(mode = "train")
+        self.assertEqual(accuracy(train_y,train_predictions), sklearn_accuracy)
+
+        predictions = DT_obj.predict(test_x, header)
+        # Obtain test accuracy using sklearn classifier
+        sklearn_accuracy = get_sklearn_accuracy(mode = "test")
+        self.assertEqual(accuracy(test_y,predictions), sklearn_accuracy)
+
+    # def test_unnecessary(self):
+    #     raise NotImplementedError("Remove vocab_map_header")
+
+
+
+import pandas as pd
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn.metrics import accuracy_score
+
+# Following code is mentioned in Jupyter Notebook as well
+def get_sklearn_accuracy(mode):
+    # Read dataset
+    train = pd.read_csv("data/small_train.csv")
+    test = pd.read_csv("data/small_test.csv")
+
+    # Encode categorical variables
+    encoder = OrdinalEncoder()
+    encoded_train = encoder.fit_transform(train)
+    encoded_test = encoder.transform(test)
+    
+    # Split data into train and test dataset
+    x_train, y_train = encoded_train[:,:-1], encoded_train[:,-1]
+    x_test, y_test = encoded_test[:,:-1], encoded_test[:,-1]
+
+    # Instantiate sklearn classifier and train on training dataset
+    model = DecisionTreeClassifier()
+    mod = model.fit(x_train, y_train)
+
+    # Evaluate model for training dataset and test dataset accuracy
+    if mode == "train":
+        predictions = mod.predict(x_train)
+        return accuracy_score(y_train, predictions)
+    elif mode == "test":
+        predictions = mod.predict(x_test)
+        return accuracy_score(y_test, predictions)
+    else:
+        raise ValueError("Specify mode")
 
 if __name__ == '__main__':
     unittest.main()
