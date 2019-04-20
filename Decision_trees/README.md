@@ -15,3 +15,4 @@ Following command can be used to execute the decision tree script
 python decision_tree.py --train *path to training dataset* --test *path to training dataset*
 ```
 
+Dataset included: Politicians attributes with the goal to predict the party of the politician, education dataset with grades corresponding to different courses with aim to predict final grade
