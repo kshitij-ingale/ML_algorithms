@@ -1,4 +1,4 @@
-# ML_algorithms
 
-Machine learning algorithms from scratch
-- Decision Trees
+# Linear Regression
+
+Linear Regression implemented in the jupyter notebook with comparison with sklearn linear regression
